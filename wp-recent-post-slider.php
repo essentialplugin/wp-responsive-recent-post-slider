@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name: WP Responsive Recent Post Slider
- * Plugin URI: https://www.essentialplugin.com/wordpress-plugin/wp-responsive-recent-post-slider/
+ * Plugin URI: https://essentialplugin.com/wordpress-plugin/wp-responsive-recent-post-slider/
  * Text Domain: wp-responsive-recent-post-slider
  * Domain Path: /languages/
  * Description: Add and display Responsive WordPresss Recent Post Slider and Carousel on your website with 4 designs (Slider) and 1 designs (Carousel) using a shortcode. Also added Gutenberg block support. 
  * Author: Essential Plugin
- * Version: 3.6.5
- * Author URI: https://www.essentialplugin.com
+ * Version: 3.6.7
+ * Author URI: https://essentialplugin.com
  *
  * @package WP Responsive Recent Post Slider
  * @author Essential Plugin
@@ -23,36 +23,36 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 1.0.0
  */
 
-if( ! defined( 'WPRPS_VERSION' ) ) {
-	define( 'WPRPS_VERSION', '3.6.5' ); // Version of plugin
+if ( ! defined( 'WPRPS_VERSION' ) ) {
+	define( 'WPRPS_VERSION', '3.6.7' ); // Version of plugin
 }
 
-if( ! defined( 'WPRPS_DIR' ) ) {
+if ( ! defined( 'WPRPS_DIR' ) ) {
 	define( 'WPRPS_DIR', dirname( __FILE__ ) ); // Plugin dir
 }
 
-if( ! defined( 'WPRPS_URL' ) ) {
+if ( ! defined( 'WPRPS_URL' ) ) {
 	define( 'WPRPS_URL', plugin_dir_url( __FILE__ ) ); // Plugin url
 }
 
-if( ! defined( 'WPRPS_POST_TYPE' ) ) {
+if ( ! defined( 'WPRPS_POST_TYPE' ) ) {
 	define( 'WPRPS_POST_TYPE', 'post' ); // Plugin post type
 }
 
-if( ! defined( 'WPRPS_PLUGIN_LINK_UPGRADE' ) ) {
-	define('WPRPS_PLUGIN_LINK_UPGRADE', 'https://www.essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Upgrade-PRO'); // Plugin Check link
+if ( ! defined( 'WPRPS_PLUGIN_LINK_UPGRADE' ) ) {
+	define('WPRPS_PLUGIN_LINK_UPGRADE', 'https://essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Upgrade-PRO'); // Plugin Check link
 }
 
-if( ! defined( 'WPRPS_SITE_LINK' ) ) {
-	define('WPRPS_SITE_LINK', 'https://www.essentialplugin.com'); // Plugin link
+if ( ! defined( 'WPRPS_SITE_LINK' ) ) {
+	define('WPRPS_SITE_LINK', 'https://essentialplugin.com'); // Plugin link
 }
 
-if( ! defined( 'WPRPS_PLUGIN_BUNDLE_LINK' ) ) {
-	define('WPRPS_PLUGIN_BUNDLE_LINK', 'https://www.essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Welcome-Screen'); // Plugin link
+if ( ! defined( 'WPRPS_PLUGIN_BUNDLE_LINK' ) ) {
+	define('WPRPS_PLUGIN_BUNDLE_LINK', 'https://essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Welcome-Screen'); // Plugin link
 }
 
-if( ! defined( 'WPRPS_PLUGIN_LINK_UNLOCK' ) ) {
-	define('WPRPS_PLUGIN_LINK_UNLOCK', 'https://www.essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Features-PRO'); // Plugin link
+if ( ! defined( 'WPRPS_PLUGIN_LINK_UNLOCK' ) ) {
+	define('WPRPS_PLUGIN_LINK_UNLOCK', 'https://essentialplugin.com/pricing/?utm_source=WP&utm_medium=RecentPostSlider&utm_campaign=Features-PRO'); // Plugin link
 }
 
 /**
@@ -98,7 +98,7 @@ add_action( 'plugins_loaded', 'wprps_load_textdomain' );
  * @since 1.0.0
  */
 function wprps_install() {
-	if( is_plugin_active('wp-responsive-recent-post-slider-pro/wp-recent-post-slider.php') ) {
+	if ( is_plugin_active('wp-responsive-recent-post-slider-pro/wp-recent-post-slider.php') ) {
 		add_action('update_option_active_plugins', 'wprps_deactivate_pro_version');
 	}
 }
@@ -135,14 +135,14 @@ function wprps_plugin_admin_notice() {
 	global $pagenow;
 
 	// If not plugin screen
-	if( 'plugins.php' != $pagenow ) {
+	if ( 'plugins.php' != $pagenow ) {
 		return;
 	}
 
 	// Check Lite Version
 	$dir = WP_PLUGIN_DIR . '/wp-responsive-recent-post-slider-pro/wp-recent-post-slider.php';
 
-	if( ! file_exists( $dir ) ) {
+	if ( ! file_exists( $dir ) ) {
 		return;
 	}
 
@@ -150,7 +150,7 @@ function wprps_plugin_admin_notice() {
 	$notice_transient   = get_transient( 'wprps_install_notice' );
 
 	// If free plugin exist
-	if( $notice_transient == false && current_user_can( 'install_plugins' ) ) {
+	if ( $notice_transient == false && current_user_can( 'install_plugins' ) ) {
 			echo '<div class="updated notice" style="position:relative;">
 					<p>
 						<strong>'.sprintf( esc_html__('Thank you for activating %s', 'wp-responsive-recent-post-slider'), 'WP Responsive Recent Post Slider').'</strong>.<br/>
