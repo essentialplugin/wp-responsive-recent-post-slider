@@ -3,7 +3,7 @@ Contributors: essentialplugin
 Tags: post slider, recent post slider, responsive post slider, responsive recent post slider, WordPress posts slider
 Requires at least: 4.0
 Tested up to: 6.8.3
-Stable tag: 3.6.7
+Stable tag: 3.7.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -184,6 +184,9 @@ Where designs are : design-1, design-2, design-3, design-4. You can use same par
 8. Gutenberg Block Support
 
 == Changelog ==  
+
+= 3.7.1 (17, Nov 2025) =
+* [*] Fixed code conflict issue affecting widget saving.
 
 = 3.6.6 (12, Nov 2025) =
 * [*] Check compatibility with WordPress version 6.8.3

@@ -6,7 +6,7 @@
  * Domain Path: /languages/
  * Description: Add and display Responsive WordPresss Recent Post Slider and Carousel on your website with 4 designs (Slider) and 1 designs (Carousel) using a shortcode. Also added Gutenberg block support. 
  * Author: Essential Plugin
- * Version: 3.6.7
+ * Version: 3.7.1
  * Author URI: https://essentialplugin.com
  *
  * @package WP Responsive Recent Post Slider
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 
 if ( ! defined( 'WPRPS_VERSION' ) ) {
-	define( 'WPRPS_VERSION', '3.6.7' ); // Version of plugin
+	define( 'WPRPS_VERSION', '3.7.1' ); // Version of plugin
 }
 
 if ( ! defined( 'WPRPS_DIR' ) ) {
